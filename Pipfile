@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 django = "*"
 djangorestframework = "*"
+faker = "*"
+pycountry = "*"
+numpy = "*"
 
 [dev-packages]
 
