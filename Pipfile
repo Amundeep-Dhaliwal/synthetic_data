@@ -9,6 +9,10 @@ djangorestframework = "*"
 faker = "*"
 pycountry = "*"
 numpy = "*"
+uvicorn = "*"
+ujson = "*"
+pyenchant = "*"
+coverage = "*"
 
 [dev-packages]
 

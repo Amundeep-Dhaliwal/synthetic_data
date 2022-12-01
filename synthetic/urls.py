@@ -23,6 +23,7 @@ router = routers.DefaultRouter()
 
 urlpatterns = [
     path('api/', include(router.urls)),
-    path('api/persons/', views.PersonAPIView.as_view(), name = 'persons'),
+    path('api/persons/', views.PersonAPIClass.as_view(), name = 'persons'),
+    # path('async/', views.AsyncClass.as_view(), name = 'async'),
     path('admin/', admin.site.urls),
 ]

@@ -3,7 +3,7 @@ services:
     image: synthetic:data
     build:
       context: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: uvicorn synthetic.asgi:application --host '0.0.0.0' --reload
     ports:
       - 8000:8000
     volumes:

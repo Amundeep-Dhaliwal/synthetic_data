@@ -10,10 +10,11 @@ from faker import Faker
 import pycountry
 import numpy as np
 
-FIELD_MAPPING = {
-    'sex':'gender',
-    'mail':'email'
-}
+from people.fields import (
+    MANDATORY_FIELDS, 
+    OUTPUT_TO_INPUT_FIELD_MAPPING,
+    INPUT_TO_OUTPUT_FIELD_MAPPING
+)
 
 csv_path = os.path.join(settings.BASE_DIR, 'demonyms.csv')
 with open(csv_path, 'r') as f:
@@ -37,7 +38,7 @@ class Person:
     deceased : bool = field(default = None)
 
     address : str = field(init = False, default = None)
-    phone_number : str = field(init = False, default = None)
+    phone : str = field(init = False, default = None)
     occupation : str = field(init = False, default = None)
 
     country : str = field(init = False, default = None)
@@ -47,7 +48,9 @@ class Person:
 
     def __post_init__(self):
         for key, value in self.skeleton.items():
-            attribute_name = FIELD_MAPPING[key] if FIELD_MAPPING.get(key) else key
+            attribute_name = OUTPUT_TO_INPUT_FIELD_MAPPING.get(key)
+            if attribute_name is None:
+                attribute_name = key
             setattr(self, attribute_name, value)
         
         for attr in self.fields:
@@ -56,6 +59,7 @@ class Person:
                     getattr(self, f'create_{attr}')()
                 except AttributeError as exception:
                     print(f'\nAttempted to set attribute {attr}\nException:\n{exception}\n')
+        
         self.skeleton = None
         self.fields = None
 
@@ -66,11 +70,11 @@ class Person:
     def create_deceased(self):
         if not getattr(self, 'age'):
             self.create_age()
-        probability_deceased =(2/np.pi) * np.arcsin(self.age/120)
+        probability_deceased = np.sin((np.pi/240) * self.age)
         self.deceased = np.random.choice([True, False], p = [probability_deceased, 1 - probability_deceased])
 
-    def create_phone_number(self):
-        self.phone_number = generator.phone_number()
+    def create_phone(self):
+        self.phone = generator.phone_number()
 
     def create_occupation(self):
         if not getattr(self, 'age'):
@@ -102,52 +106,40 @@ class Person:
         copy_fields.remove('dependents')
         if getattr(self, 'age'):
             copy_fields.append('age')
-
-        self.dependents = generate_persons(number_of_dependents, copy_fields)
         
-def generate_persons(number : int, fields : list[str], age_list : list[int] = None):
-    mandatory = {'name', 'mail', 'sex'}
-
-    if age_list is None:
-        mandatory.add('birthdate')
-
-    query_fields = mandatory.union(fields)
-
-    additional_fields = set(fields) - mandatory
+        output_fields = []
+        for field in copy_fields:
+            potential = field
+            if field in INPUT_TO_OUTPUT_FIELD_MAPPING.keys():
+                potential = INPUT_TO_OUTPUT_FIELD_MAPPING[field]
+            output_fields.append(potential)
+        
+        self.dependents = generate_persons(
+            number_of_dependents, 
+            copy_fields,
+            output_fields
+        )
+        
+def generate_persons(number : int, 
+                    input_fields : list[str], 
+                    output_fields : list[str],
+                    age_list : list[int] = None):
 
     people = []
-    dictionary_factory = lambda x : {k:v for (k, v) in x if v != None}
+    dictionary_factory = lambda x : {k:v for (k, v) in x if v is not None}
     for i in range(number):
-        skeleton = generator.profile(fields = query_fields)
+        skeleton = generator.profile(fields = output_fields)
 
-        if isinstance(age_list, np.ndarray) and len(age_list) > 0:
+        if isinstance(age_list, np.ndarray):
             age = np.random.choice(age_list)
             skeleton['age'] = age
             skeleton['birthdate'] = date.today() - relativedelta(years = age)
 
         person = Person(
             skeleton = skeleton,
-            fields = additional_fields
+            fields = input_fields
         )
+        
         people.append(asdict(person, dict_factory= dictionary_factory))
     
     return people
-
-if __name__ == '__main__':
-    fields = [
-        'name',
-        'mail',
-        'birthdate',
-        'sex',
-
-        'age',
-        'deceased', # 
-        'phone_number',
-        'occupation',
-        'address', # 
-        'country', # 
-        'nationality', # 
-        
-        'dependents' # empty list
-    ]
-    pprint(generate_persons(1, fields))

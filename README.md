@@ -6,6 +6,11 @@ To run locally via docker:
 $ make build
 ```
 
+To run tests
+```
+$ make test
+```
+
 Minimal request:
 ```
 {
@@ -23,7 +28,7 @@ Minimal response:
   }
 ]
 ```
-By default the name, email, gender and birthdate fields are provided. The number of entries is recommended as < 10000 due to performance reasons.
+By default the name, email, gender and birthdate fields are provided. The number of entries is recommended as < 10000 due to performance.
 
 Verbose request:
 ```
@@ -32,9 +37,13 @@ Verbose request:
   "age_lower_limit":20,
   "age_upper_limit":80,
   "fields": [
+      "name",
+      "email",
+      "gender",
+      "birthdate",
       "age",
       "deceased",
-      "phone_number",
+      "phone",
       "occupation",
       "address",
       "country",
@@ -76,16 +85,17 @@ Verbose response:
   }
 ]
 ```
+You are required to enter the fields name, email, birthdate and gender into the fields array. Mistyped fields can have helpful suggestions.
 ### Age limits
 #### `age_lower_limit`
 Defaults to 0 if unspecified.
 #### `age_upper_limit`
-Specify upper limit of human age, limited to 120.
+Specify upper limit of human age, limited to 115.
 
 ### Deceased
 The older an individual, the higher the probability of truth.
 
-### Phone number
+### Phone
 Random phone number.
 
 ### Occupation

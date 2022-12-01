@@ -3,7 +3,7 @@ FROM python:3.11-buster
 # AS base # is a multi-stage build required?
 
 RUN apt-get update && apt-get upgrade
-RUN apt-get install gcc
+RUN apt-get install gcc enchant -y
 
 RUN pip install pipenv
 
