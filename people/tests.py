@@ -78,42 +78,46 @@ class PersonAPIClassTests(TestCase):
         self.assertEqual(no_suggestion_tuple[2], None)
 
     def test_process_get_request(self):
-        with patch.object(self.view, 'get_number_of_people', return_value = 1)as number:
-            with patch.object(self.view, 'handle_fields', return_value = deepcopy(self.input_and_output_queries)) as fields:
-                with patch.object(self.view, 'handle_age_restrictions') as array:
-                    array.return_value = np.arange(10)
-                    with patch.object(self.view, 'raise_response') as raiser:
-                        raiser.side_effect = [RaisedResponse(self.content_tested_dict, 201), RaisedResponse(self.content_tested_dict, 500)]
-                        self.assert_response(
-                            self.view.process_get_request, 201, self.content_tested_dict
-                        )
+        valid_serializer = Mock()
+        valid_serializer.is_valid.return_value = True
+        invalid_serializer = Mock()
+        invalid_serializer.is_valid.return_value = False
+        with (
+            patch.object(self.view, 'get_number_of_people', return_value = 1) as number,
+            patch.object(self.view, 'handle_fields', return_value = deepcopy(self.input_and_output_queries)) as fields,
+            patch.object(self.view, 'handle_age_restrictions',return_value =np.arange(10)) as array,
+            patch.object(self.view, 'raise_response', side_effect =[RaisedResponse(self.content_tested_dict, 201), RaisedResponse(self.content_tested_dict, 500)]) as raiser,
+            patch('people.views.PersonSerializer', side_effect = [valid_serializer,invalid_serializer]) as serializer
+        ):
+            self.assert_response(
+                self.view.process_get_request, 201, self.content_tested_dict
+            )
 
-                        serializer_mock = Mock()
-                        serializer_mock.is_valid.return_value = False
-                        with patch('people.views.PersonSerializer', return_value = serializer_mock) as serializer:
-                            fields.return_value = deepcopy(self.input_and_output_queries)
-                            
-                            self.assert_response(
-                                self.view.process_get_request, 500, self.content_tested_dict
-                            )
+            fields.return_value = deepcopy(self.input_and_output_queries)
+
+            self.assert_response(
+                self.view.process_get_request, 500, self.content_tested_dict
+            )
                                 
     def test_handle_fields(self):
         fields = self.view.handle_fields(self.view, self.content_tested_dict)
         for tup in zip(fields, self.input_and_output_queries):
             self.assertEqual(*list(map(sorted,tup)))
 
-        with patch.object(self.view, 'raise_response', side_effect = [RaisedResponse({}, 412), RaisedResponse({}, 412)]) as raiser:
-            with patch.object(self.view, 'validate_inputted_fields', side_effect = [(False, 0, 0), (True, 0,0)]) as validation:
-                request_body = {
-                    'fields':['name']
-                }
-                self.assert_response(
-                    self.view.handle_fields, 412, request_body
-                )
+        with (
+            patch.object(self.view, 'raise_response', side_effect = [RaisedResponse({}, 412), RaisedResponse({}, 412)]) as raiser,
+            patch.object(self.view, 'validate_inputted_fields', side_effect = [(False, 0, 0), (True, 0,0)]) as validation
+        ):
+            request_body = {
+                'fields':['name']
+            }
+            self.assert_response(
+                self.view.handle_fields, 412, request_body
+            )
 
-                self.assert_response(
-                    self.view.handle_fields, 412, request_body
-                )
+            self.assert_response(
+                self.view.handle_fields, 412, request_body
+            )
     
     def test_handle_age_restrictions(self):
         no_age_limits = {}
@@ -137,7 +141,6 @@ class PersonAPIClassTests(TestCase):
             self.assert_response(
                 self.view.handle_age_restrictions, 416, upper_limit_out_of_range
             )
-
 
             lower_bigger_than_upper = {'age_lower_limit': 10, 'age_upper_limit':5}
             self.assert_response(
