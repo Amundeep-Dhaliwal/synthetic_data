@@ -1,0 +1,4 @@
+db.sqlite3
+syntax_testing/
+.vscode/
+.git/

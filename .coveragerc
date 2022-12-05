@@ -1,0 +1,6 @@
+[run]
+omit=
+    */__init__.py
+    people/admin.py
+    people/apps.py
+    people/tests.py
