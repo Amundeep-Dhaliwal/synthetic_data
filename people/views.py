@@ -136,6 +136,8 @@ class PersonAPIClass(View):
         upper_age_limit = request_body.get('age_upper_limit')
         EXCLUSIVE_UPPER_AGE_LIMIT = 115
 
+
+
         if upper_age_limit is not None and upper_age_limit > EXCLUSIVE_UPPER_AGE_LIMIT:
             self.raise_response(
                 {
@@ -143,6 +145,20 @@ class PersonAPIClass(View):
                 }, 
                 status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
             )
+
+        if lower_age_limit or upper_age_limit:
+            requested_fields = request_body.get('fields')
+            if requested_fields is None:
+                raise_exception = True
+            else:
+                raise_exception = 'age' not in requested_fields
+            if raise_exception:
+                self.raise_response(
+                    {
+                        'error':"Please specify 'age' in the fields array when providing age limits"
+                    },
+                    status=status.HTTP_412_PRECONDITION_FAILED
+                )
 
         if lower_age_limit and upper_age_limit:
             if lower_age_limit >= upper_age_limit:

@@ -133,28 +133,34 @@ class PersonAPIClassTests(TestCase):
         age_list = self.view.handle_age_restrictions(self.view, no_age_limits)
         self.assertEqual(age_list, None)
 
-        only_upper = {'age_upper_limit': 15}
-        array_from_zero = self.view.handle_age_restrictions(self.view,only_upper)
-        self.assertEqual(isinstance(array_from_zero, np.ndarray), True)
-
-        only_lower = {'age_lower_limit': 15}
-        array_from_fifteen = self.view.handle_age_restrictions(self.view, only_lower)
-        self.assertEqual(isinstance(array_from_fifteen, np.ndarray), True)
-
-        lower_and_upper = {'age_lower_limit': 10, 'age_upper_limit':50}        
-        half_open_array = self.view.handle_age_restrictions(self.view, lower_and_upper)
-        self.assertEqual(len(half_open_array), 40)        
-
         with patch.object(self.view, 'raise_response', side_effect = RaisedResponse({}, 416)) as raiser:
-            upper_limit_out_of_range = {'age_upper_limit': 150}
+            lower_age_limit_without_age_field = {'age_lower_limit':10}
+            self.assert_response(
+                self.view.handle_age_restrictions, 416, lower_age_limit_without_age_field
+            )
+
+            upper_limit_out_of_range = {'age_upper_limit': 150, 'fields':['age']}
             self.assert_response(
                 self.view.handle_age_restrictions, 416, upper_limit_out_of_range
             )
 
-            lower_bigger_than_upper = {'age_lower_limit': 10, 'age_upper_limit':5}
+            lower_bigger_than_upper = {'age_lower_limit': 10, 'age_upper_limit':5, 'fields':['age']}
             self.assert_response(
                 self.view.handle_age_restrictions, 416, lower_bigger_than_upper
             )
+        
+        only_upper = {'age_upper_limit': 15, 'fields':['age']}
+        array_from_zero = self.view.handle_age_restrictions(self.view,only_upper)
+        self.assertEqual(isinstance(array_from_zero, np.ndarray), True)
+
+        only_lower = {'age_lower_limit': 15, 'fields':['age']}
+        array_from_fifteen = self.view.handle_age_restrictions(self.view, only_lower)
+        self.assertEqual(isinstance(array_from_fifteen, np.ndarray), True)
+
+        lower_and_upper = {'age_lower_limit': 10, 'age_upper_limit':50,'fields':['age']}        
+        half_open_array = self.view.handle_age_restrictions(self.view, lower_and_upper)
+        self.assertEqual(len(half_open_array), 40)        
+
 
 class PersonDataClassTests(TestCase):
     fields = [
