@@ -87,6 +87,7 @@ Verbose response:
 ```
 You are required to enter the fields name, email, birthdate and gender into the fields array. Mistyped fields can have helpful suggestions.
 ### Age limits
+If age limits are specified, then age would be required in the requested fields.
 #### `age_lower_limit`
 Defaults to 0 if unspecified.
 #### `age_upper_limit`
