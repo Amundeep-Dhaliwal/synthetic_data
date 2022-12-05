@@ -105,18 +105,27 @@ class PersonAPIClassTests(TestCase):
             self.assertEqual(*list(map(sorted,tup)))
 
         with (
-            patch.object(self.view, 'raise_response', side_effect = [RaisedResponse({}, 412), RaisedResponse({}, 412)]) as raiser,
-            patch.object(self.view, 'validate_inputted_fields', side_effect = [(False, 0, 0), (True, 0,0)]) as validation
+            patch.object(self.view, 'raise_response', side_effect = RaisedResponse({}, 412)) as raiser,
+            patch.object(self.view, 'validate_inputted_fields', side_effect = [(False, 0, 0), (True, 0,0), (True,0, 0)]) as validation
         ):
-            request_body = {
+            incomplete_request_body = {
                 'fields':['name']
             }
             self.assert_response(
-                self.view.handle_fields, 412, request_body
+                self.view.handle_fields, 412, incomplete_request_body
             )
 
             self.assert_response(
-                self.view.handle_fields, 412, request_body
+                self.view.handle_fields, 412, incomplete_request_body
+            )           
+
+            age_not_specified = {
+                'age_lower_limit':5,
+                'fields':['name','email','gender','birthdate']
+            }
+            
+            self.assert_response(
+                self.view.handle_fields, 412, age_not_specified
             )
     
     def test_handle_age_restrictions(self):

@@ -110,6 +110,15 @@ class PersonAPIClass(View):
                     },
                     status = status.HTTP_412_PRECONDITION_FAILED
                 )
+            
+            has_age_been_specified = bool(request_body.get('age_lower_limit') or request_body.get('age_upper_limit'))
+            if has_age_been_specified and 'age' not in inputted_fields:
+                self.raise_response(
+                    {
+                        "error":"Please request 'age' in the fields array as age limits have been explicitly provided"
+                    },
+                    status = status.HTTP_412_PRECONDITION_FAILED
+                )
         else:
             inputted_fields = list(MANDATORY_FIELDS)
 
