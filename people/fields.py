@@ -1,3 +1,10 @@
+"""
+This file contains mappings for the interchange of fields between
+the user inputted fields and the faker profile field name.
+
+It also lists the mandatory fields for 
+a query and the possible query fields for the API
+"""
 OUTPUT_TO_INPUT_FIELD_MAPPING = {
     'sex':'gender',
     'mail':'email'

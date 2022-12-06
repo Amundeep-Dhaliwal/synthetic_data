@@ -22,14 +22,32 @@ from people.fields import MANDATORY_FIELDS, USER_QUERY_FIELDS, INPUT_TO_OUTPUT_F
 dictionary = enchant.Dict('en_US')
 
 class RaisedResponse(Exception):
+    """An exception that is raised and propagates up the call stack
+
+    Args:
+        Exception : Contains human readable content and a HTTP status code
+    """
     def __init__(self, content, status):
         self.content = content
         self.status = status
 
 class PersonAPIClass(View):
+    """A class based view that is responsible for the /api/persons/ endpoint
+
+    Inherits from:
+        View (Generic python class): Implements a dispatch-by-method and provides simple sanity checking
+    """
 
     async def get(self, request, *args, **kwargs):
+        """Handles GET requests asynchronously
 
+        Args:
+            request : request metadata
+
+        Returns:
+            HttpResponse: A response class with a content dictionary 
+            and a HTTP status code
+        """
         request_body = ujson.loads(request.body)
         try:
             self.process_get_request(request_body)
@@ -40,6 +58,15 @@ class PersonAPIClass(View):
             )
     
     def process_get_request(self, request_body):
+        """Processes the request body, invokes the creation of data
+        and returns the serialized response
+
+        Args:
+            request_body : request metadata
+        
+        Raises:
+            RaisedResponse
+        """
         number_of_people = self.get_number_of_people(request_body)
 
         input_query_fields, output_query_fields = self.handle_fields(request_body)
@@ -66,7 +93,7 @@ class PersonAPIClass(View):
         
         self.raise_response(
             {
-                'error':'Sorry there was an error'
+                'error':'An error was encountered whilst serializing the person data'
             },
             status =status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -90,6 +117,18 @@ class PersonAPIClass(View):
         return number_of_people
     
     def handle_fields(self,request_body):
+        """Handles input validation and ensures mandatory 
+        fields are provided and gives suggestions for mistyped fields
+
+        Args:
+            request_body : request metadata
+
+        Returns:
+            inputted_fields (list) : a list of the inputted fields as 
+            specified in the request
+            outputted_query_fields (list) : a list of fields that conform 
+            to the faker specification
+        """
         inputted_fields = request_body.get('fields')
         
         if inputted_fields:
@@ -131,12 +170,19 @@ class PersonAPIClass(View):
         return inputted_fields, output_query_fields
 
     def handle_age_restrictions(self, request_body):
+        """Handles validation of the provided age limits
+
+        Args:
+            request_body : request metadata
+
+        Returns:
+            age_list (None | np.ndarray): if age limits are not specified, 
+            this method would return None. Else, a 1 dimensional array of potential integer ages.
+        """
         age_list = None
         lower_age_limit = request_body.get('age_lower_limit')
         upper_age_limit = request_body.get('age_upper_limit')
         EXCLUSIVE_UPPER_AGE_LIMIT = 115
-
-
 
         if upper_age_limit is not None and upper_age_limit > EXCLUSIVE_UPPER_AGE_LIMIT:
             self.raise_response(
@@ -173,6 +219,7 @@ class PersonAPIClass(View):
 
         elif upper_age_limit:
             age_list = np.arange(upper_age_limit)
+        
         elif lower_age_limit:
             age_list = np.arange(lower_age_limit, EXCLUSIVE_UPPER_AGE_LIMIT)
         
@@ -180,6 +227,15 @@ class PersonAPIClass(View):
 
 
     def validate_inputted_fields(self, inputted_fields):
+        """Suggests a field name for an erroneous inputted field
+
+        Args:
+            inputted_fields (list): user inputted fields
+
+        Returns:
+            3 element tuple: First element would correspond to whether the inputted fields are valid,
+            second element would be the erroneous field and third would be a potential suggestion.
+        """
         for field in inputted_fields:
             if field not in USER_QUERY_FIELDS:
                 suggestions = dictionary.suggest(field)

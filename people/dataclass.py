@@ -26,6 +26,9 @@ generator = Faker()
 
 @dataclass
 class Person:
+    """
+    A dataclass that represents a person, attributes and helper methods are specified
+    """
     skeleton : dict = field(init = True)
     fields : list = field(init = True)
 
@@ -47,6 +50,11 @@ class Person:
     dependents : list = field(default = None)
 
     def __post_init__(self):
+        """
+        Invoked after dataclass initialization, iterates over the dictionary of attributes
+        specified for this instance and ensures they are initialized through the use of
+        the helper methods
+        """
         for key, value in self.skeleton.items():
             attribute_name = OUTPUT_TO_INPUT_FIELD_MAPPING.get(key)
             if attribute_name is None:
@@ -68,6 +76,10 @@ class Person:
         self.age =  today.year - self.birthdate.year - ((today.month, today.day) < (self.birthdate.month, self.birthdate.day))
 
     def create_deceased(self):
+        """
+        Human age in the context of of this API is constrained to 0 <= 𝑥 <= 120
+        Evaluating the sin((π/240)*𝑥) gives the probability of an individual being deceased
+        """
         if not getattr(self, 'age'):
             self.create_age()
         probability_deceased = np.sin((np.pi/240) * self.age)
@@ -104,7 +116,9 @@ class Person:
         number_of_dependents = np.random.choice(np.arange(4))
         copy_fields = list(self.fields)
         copy_fields.remove('dependents')
-        if getattr(self, 'age'):
+        if 'birthdate' not in copy_fields:
+            copy_fields.append('birthdate')
+        if getattr(self, 'age') and 'age' not in copy_fields:
             copy_fields.append('age')
         
         output_fields = []
@@ -123,8 +137,18 @@ class Person:
 def generate_persons(number : int, 
                     input_fields : list[str], 
                     output_fields : list[str],
-                    age_list : list[int] = None):
+                    age_list : list[int] = None) -> list[dict]:
+    """Creates a list of synthetic person entries
 
+    Args:
+        number (int): The number of entries generated
+        input_fields (list[str]): A list of desired fields as specified by the user input
+        output_fields (list[str]): A list of desired fields conforming to the faker specification
+        age_list (list[int], optional): A numpy 1 dimensional array outlining the potential age range as specified by the user. Defaults to None.
+
+    Returns:
+        list[dict]: a list of generated data
+    """
     people = []
     dictionary_factory = lambda x : {k:v for (k, v) in x if v is not None}
     for i in range(number):
