@@ -13,6 +13,7 @@ uvicorn = "*"
 ujson = "*"
 pyenchant = "*"
 coverage = "*"
+locust = "*"
 
 [dev-packages]
 
