@@ -22,8 +22,8 @@ router = routers.DefaultRouter()
 # router.register(r'persons', views.PersonAPIView, basename = 'persons')
 
 urlpatterns = [
-    path('api/', include(router.urls)),
-    path('api/persons/', views.PersonAPIClass.as_view(), name = 'persons'),
+    path("api/", include(router.urls)),
+    path("api/persons/", views.PersonAPIClass.as_view(), name="persons"),
     # path('async/', views.AsyncClass.as_view(), name = 'async'),
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
 ]

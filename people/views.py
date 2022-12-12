@@ -17,9 +17,14 @@ import enchant
 
 from people.serializers import PersonSerializer
 from people.dataclass import generate_persons
-from people.fields import MANDATORY_FIELDS, USER_QUERY_FIELDS, INPUT_TO_OUTPUT_FIELD_MAPPING
+from people.fields import (
+    MANDATORY_FIELDS,
+    USER_QUERY_FIELDS,
+    INPUT_TO_OUTPUT_FIELD_MAPPING,
+)
 
-dictionary = enchant.Dict('en_US')
+dictionary = enchant.Dict("en_US")
+
 
 class RaisedResponse(Exception):
     """An exception that is raised and propagates up the call stack
@@ -27,9 +32,11 @@ class RaisedResponse(Exception):
     Args:
         Exception : Contains human readable content and a HTTP status code
     """
+
     def __init__(self, content, status):
         self.content = content
         self.status = status
+
 
 class PersonAPIClass(View):
     """A class based view that is responsible for the /api/persons/ endpoint
@@ -38,32 +45,29 @@ class PersonAPIClass(View):
         View (Generic python class): Implements a dispatch-by-method and provides simple sanity checking
     """
 
-    async def get(self, request, *args, **kwargs):
+    async def get(self, request, *args, **kwargs) -> HttpResponse:
         """Handles GET requests asynchronously
 
         Args:
             request : request metadata
 
         Returns:
-            HttpResponse: A response class with a content dictionary 
+            HttpResponse: A response class with a content dictionary
             and a HTTP status code
         """
         request_body = ujson.loads(request.body)
         try:
             self.process_get_request(request_body)
         except RaisedResponse as resp:
-            return HttpResponse(
-                content = ujson.dumps(resp.content),
-                status = resp.status
-            )
-    
-    def process_get_request(self, request_body):
+            return HttpResponse(content=ujson.dumps(resp.content), status=resp.status)
+
+    def process_get_request(self, request_body: dict) -> None:
         """Processes the request body, invokes the creation of data
         and returns the serialized response
 
         Args:
             request_body : request metadata
-        
+
         Raises:
             RaisedResponse
         """
@@ -74,89 +78,102 @@ class PersonAPIClass(View):
         age_list = self.handle_age_restrictions(request_body)
 
         if isinstance(age_list, np.ndarray):
-            input_query_fields.remove('birthdate')
-            output_query_fields.remove('birthdate')
-        
+            input_query_fields.remove("birthdate")
+            output_query_fields.remove("birthdate")
+
         generated_people = generate_persons(
-            number = number_of_people,
-            input_fields = input_query_fields, # This list include email, gender
-            output_fields = output_query_fields, # This list includes mail, sex
-            age_list = age_list
+            number=number_of_people,
+            input_fields=input_query_fields,  # This list include email, gender
+            output_fields=output_query_fields,  # This list includes mail, sex
+            age_list=age_list,
         )
 
-        serialized = PersonSerializer(data = generated_people, many = True)
+        serialized = PersonSerializer(data=generated_people, many=True)
         if serialized.is_valid():
-            self.raise_response(
-                serialized.data,
-                status = status.HTTP_201_CREATED
-            )
-        
+            self.raise_response(serialized.data, status=status.HTTP_201_CREATED)
+
         self.raise_response(
-            {
-                'error':'An error was encountered whilst serializing the person data'
-            },
-            status =status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"error": "An error was encountered whilst serializing the person data"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-    def raise_response(self, content, status):
-        raise RaisedResponse(
-            content = content,
-            status = status
-        )
+    def raise_response(self, content: dict, status: int) -> None:
+        """
+        A method that raises a custom exception to be propagated up the callstack
+        Args:
+            content (dict): an error dictionary or the serialized result
+            status (int): HTTP response code
 
-    def get_number_of_people(self, request_body):
-        number_of_people = request_body.get('number')
+        Raises:
+            RaisedResponse: An exception class
+        """
+        raise RaisedResponse(content=content, status=status)
+
+    def get_number_of_people(self, request_body: dict) -> int:
+        """
+        Collects the number of entries to be generated
+
+        Args:
+            request_body (dict): request body
+
+        Returns:
+            int: the number of people
+        """
+        number_of_people = request_body.get("number")
         if number_of_people is None:
             self.raise_response(
-                {
-                    "error":"Please specify the number of people that you desire"
-                },
-                status = status.HTTP_412_PRECONDITION_FAILED
+                {"error": "Please specify the number of people that you desire"},
+                status=status.HTTP_412_PRECONDITION_FAILED,
             )
 
         return number_of_people
-    
-    def handle_fields(self,request_body):
-        """Handles input validation and ensures mandatory 
+
+    def handle_fields(self, request_body: dict) -> tuple[list, list]:
+        """Handles input validation and ensures mandatory
         fields are provided and gives suggestions for mistyped fields
 
         Args:
             request_body : request metadata
 
         Returns:
-            inputted_fields (list) : a list of the inputted fields as 
+            inputted_fields (list) : a list of the inputted fields as
             specified in the request
-            outputted_query_fields (list) : a list of fields that conform 
+            outputted_query_fields (list) : a list of fields that conform
             to the faker specification
         """
-        inputted_fields = request_body.get('fields')
-        
+        inputted_fields = request_body.get("fields")
+
         if inputted_fields:
             valid, inputted, suggestion = self.validate_inputted_fields(inputted_fields)
             if not valid:
-                suggestion_string = f", perhaps you meant '{suggestion}'?" if suggestion else ""
+                suggestion_string = (
+                    f", perhaps you meant '{suggestion}'?" if suggestion else ""
+                )
                 self.raise_response(
                     {
                         "error": f"{inputted} was not recognised as a valid field name{suggestion_string}"
                     },
-                    status = status.HTTP_412_PRECONDITION_FAILED
-                ) 
-            
+                    status=status.HTTP_412_PRECONDITION_FAILED,
+                )
+
             if not MANDATORY_FIELDS.issubset(inputted_fields):
                 self.raise_response(
                     {
                         "error": "Please specify name, email, gender and birthdate in the 'fields' array"
                     },
-                    status = status.HTTP_412_PRECONDITION_FAILED
+                    status=status.HTTP_412_PRECONDITION_FAILED,
                 )
-            
-            has_age_been_specified = bool(request_body.get('age_lower_limit') or request_body.get('age_upper_limit'))
-            if has_age_been_specified and 'age' not in inputted_fields:
+
+            has_age_been_specified = bool(
+                request_body.get("age_lower_limit")
+                or request_body.get("age_upper_limit")
+            )
+            if has_age_been_specified and "age" not in inputted_fields:
                 self.raise_response(
                     {
-                        "error":"Please request 'age' in the fields array as age limits have been explicitly provided"
+                        "error": "Please request 'age' in the fields array as age limits have been explicitly provided"
                     },
-                    status = status.HTTP_412_PRECONDITION_FAILED
+                    status=status.HTTP_412_PRECONDITION_FAILED,
                 )
         else:
             inputted_fields = list(MANDATORY_FIELDS)
@@ -165,68 +182,71 @@ class PersonAPIClass(View):
         for field in inputted_fields:
             if field in INPUT_TO_OUTPUT_FIELD_MAPPING.keys():
                 index_position = inputted_fields.index(field)
-                output_query_fields[index_position] = INPUT_TO_OUTPUT_FIELD_MAPPING[field]
-        
+                output_query_fields[index_position] = INPUT_TO_OUTPUT_FIELD_MAPPING[
+                    field
+                ]
+
         return inputted_fields, output_query_fields
 
-    def handle_age_restrictions(self, request_body):
+    def handle_age_restrictions(self, request_body: dict) -> None | np.ndarray:
         """Handles validation of the provided age limits
 
         Args:
             request_body : request metadata
 
         Returns:
-            age_list (None | np.ndarray): if age limits are not specified, 
+            age_list (None | np.ndarray): if age limits are not specified,
             this method would return None. Else, a 1 dimensional array of potential integer ages.
         """
         age_list = None
-        lower_age_limit = request_body.get('age_lower_limit')
-        upper_age_limit = request_body.get('age_upper_limit')
+        lower_age_limit = request_body.get("age_lower_limit")
+        upper_age_limit = request_body.get("age_upper_limit")
         EXCLUSIVE_UPPER_AGE_LIMIT = 115
 
         if upper_age_limit is not None and upper_age_limit > EXCLUSIVE_UPPER_AGE_LIMIT:
             self.raise_response(
                 {
-                    'error':f'The upper age limit of {upper_age_limit} is not appropriate'
-                }, 
-                status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
+                    "error": f"The upper age limit of {upper_age_limit} is not appropriate"
+                },
+                status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
             )
 
         if lower_age_limit or upper_age_limit:
-            requested_fields = request_body.get('fields')
+            requested_fields = request_body.get("fields")
             if requested_fields is None:
                 raise_exception = True
             else:
-                raise_exception = 'age' not in requested_fields
+                raise_exception = "age" not in requested_fields
             if raise_exception:
                 self.raise_response(
                     {
-                        'error':"Please specify 'age' in the fields array when providing age limits"
+                        "error": "Please specify 'age' in the fields array when providing age limits"
                     },
-                    status=status.HTTP_412_PRECONDITION_FAILED
+                    status=status.HTTP_412_PRECONDITION_FAILED,
                 )
 
         if lower_age_limit and upper_age_limit:
             if lower_age_limit >= upper_age_limit:
                 self.raise_response(
                     {
-                        'error':f'Please input a valid age range, as {lower_age_limit} is greater than or equal to {upper_age_limit}'
+                        "error": f"Please input a valid age range, as {lower_age_limit} is greater than or equal to {upper_age_limit}"
                     },
-                    status = status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE
+                    status=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
                 )
 
             age_list = np.arange(lower_age_limit, upper_age_limit)
 
         elif upper_age_limit:
             age_list = np.arange(upper_age_limit)
-        
+
         elif lower_age_limit:
             age_list = np.arange(lower_age_limit, EXCLUSIVE_UPPER_AGE_LIMIT)
-        
+
         return age_list
 
-
-    def validate_inputted_fields(self, inputted_fields):
+    def validate_inputted_fields(
+        self, inputted_fields: list
+    ) -> tuple[bool, str | None, str | None]:
         """Suggests a field name for an erroneous inputted field
 
         Args:
@@ -239,12 +259,14 @@ class PersonAPIClass(View):
         for field in inputted_fields:
             if field not in USER_QUERY_FIELDS:
                 suggestions = dictionary.suggest(field)
-                
+
                 try:
-                    string_suggestion = USER_QUERY_FIELDS.intersection(suggestions).pop()
+                    string_suggestion = USER_QUERY_FIELDS.intersection(
+                        suggestions
+                    ).pop()
                 except KeyError:
                     return False, field, None
-                
+
                 return False, field, string_suggestion
-        
+
         return True, None, None
