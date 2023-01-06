@@ -1,6 +1,32 @@
 # synthetic_data
 API that produces synthetic person data through the use of the Faker python package.
 
+## Prequisites
+
+Python 3.9 or higher (user `python --version` to find out)
+enchant (see [Installation](#installation) section)
+All the packages mentioned in the `requirements.txt` (see [Installation](#installation) section)
+
+## Installation
+
+_Linux_
+```bash
+[sudo] apt-get update
+[sudo] apt-get install enchant
+```
+
+_macOS_
+```bash
+brew install enchant
+```
+
+Once the above have been successfully installed, please do the below:
+
+```bash
+pip install --user -r requirements.txt
+```
+
+## Running
 To run locally via docker:
 ```
 $ make build
